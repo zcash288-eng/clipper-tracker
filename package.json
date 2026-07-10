@@ -1,0 +1,19 @@
+{
+  "name": "clipper-tracker",
+  "version": "1.0.0",
+  "description": "YouTube Shorts and Instagram Reels stats tracker and reminder dashboard for clippers.",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "axios": "^1.7.2",
+    "cheerio": "^1.2.0",
+    "cors": "^2.8.5",
+    "express": "^4.19.2",
+    "puppeteer": "^25.3.0"
+  },
+  "devDependencies": {
+    "eslint": "^10.6.0"
+  }
+}

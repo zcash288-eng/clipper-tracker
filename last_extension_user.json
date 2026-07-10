@@ -1,0 +1,111 @@
+{
+  "ai_agent_type": null,
+  "bio_links": [
+    {
+      "link_type": "external",
+      "lynx_url": "https://l.instagram.com/?u=https%3A%2F%2Fatomikclips.oia.bio%2Fvictor%3Futm_source%3Dig%26utm_medium%3Dsocial%26utm_content%3Dlink_in_bio%26fbclid%3DPAZXh0bgNhZW0CMTEAc3J0YwZhcHBfaWQMMjU2MjgxMDQwNTU4AAGnrUh8LKXD5FnILRJnONHt1mRqrBcWQVVGsxboBL13j8DbxweaPQih0Wtkbt0_aem_URAh_Ti74c6OsZgOisuLRA&e=AUAhMoTX3zt8sJJUukAjJzepXdXQNIw2FOP5WJ3gUqSm7V6JmFshOE7G-saYHwrvqi75aRuQDsiAym9PFGG-1oa-QDG8P6WcFfMiTj9Y4Q",
+      "title": "VICTOR",
+      "url": "https://atomikclips.oia.bio/victor"
+    }
+  ],
+  "biography": "🚀 Founder sharing the business blueprint.\n💡 Strategies for growth & scale.\n🔥 Daily fuel for your ambition \nProduced by @atomikgrowth",
+  "biography_with_entities": {
+    "entities": [
+      {
+        "hashtag": null,
+        "user": {
+          "username": "atomikgrowth"
+        }
+      }
+    ],
+    "raw_text": "🚀 Founder sharing the business blueprint.\n💡 Strategies for growth & scale.\n🔥 Daily fuel for your ambition \nProduced by @atomikgrowth"
+  },
+  "blocked_by_viewer": false,
+  "business_address_json": null,
+  "business_category_name": null,
+  "business_contact_method": "UNKNOWN",
+  "business_email": null,
+  "business_phone_number": null,
+  "category_enum": null,
+  "category_name": null,
+  "country_block": false,
+  "edge_follow": {
+    "count": 25
+  },
+  "edge_followed_by": {
+    "count": 77
+  },
+  "edge_mutual_followed_by": {
+    "count": 3,
+    "edges": [
+      {
+        "node": {
+          "username": "roamtech.en"
+        }
+      },
+      {
+        "node": {
+          "username": "tobiii7_7"
+        }
+      },
+      {
+        "node": {
+          "username": "fintechflow2026"
+        }
+      }
+    ]
+  },
+  "edge_owner_to_timeline_media": {
+    "count": 28,
+    "edges": [],
+    "page_info": {
+      "end_cursor": "",
+      "has_next_page": true
+    }
+  },
+  "eimu_id": "18097819975917012",
+  "external_url": "https://atomikclips.oia.bio/victor",
+  "external_url_linkshimmed": "https://l.instagram.com/?u=https%3A%2F%2Fatomikclips.oia.bio%2Fvictor%3Ffbclid%3DPAZXh0bgNhZW0CMTEAc3J0YwZhcHBfaWQMMjU2MjgxMDQwNTU4AAGnd5-pmeaXgAGTSrrchuS1M9_Wr0J-dtGUgRLMa6nCUeHiWjU8hCPeZgfD-Gk_aem_xH2KUSbTuzoSMcVliHBQBw&e=AUDZdv9wiEW_qlunp_UDC1apGobKvhH8O54vIX3NVa_fgqZtCABZgrbFQrgT46M6_Ix9sO-piLCF3HIaZPhcII-dLIfcQBfALcAjLE9LrQ",
+  "fb_profile_biolink": null,
+  "fbid": "17841427510354139",
+  "followed_by_viewer": true,
+  "follows_viewer": false,
+  "full_name": "FOUNDER | BUSINESS | TECH",
+  "group_metadata": null,
+  "guardian_id": null,
+  "has_ar_effects": false,
+  "has_blocked_viewer": false,
+  "has_chaining": true,
+  "has_channel": false,
+  "has_clips": true,
+  "has_guides": false,
+  "has_requested_viewer": false,
+  "hide_like_and_view_counts": false,
+  "highlight_reel_count": 0,
+  "id": "27553117011",
+  "is_business_account": false,
+  "is_embeds_disabled": false,
+  "is_guardian_of_viewer": false,
+  "is_joined_recently": false,
+  "is_private": false,
+  "is_professional_account": true,
+  "is_regulated_c18": false,
+  "is_supervised_by_viewer": false,
+  "is_supervised_user": false,
+  "is_supervision_enabled": false,
+  "is_verified": false,
+  "is_verified_by_mv4b": false,
+  "overall_category_name": null,
+  "pinned_channels_list_count": 0,
+  "profile_pic_url": "https://instagram.fhyd7-1.fna.fbcdn.net/v/t51.82787-19/698830179_18100821547917012_3532847996114615939_n.jpg?stp=dst-jpg_s150x150_tt6&efg=eyJ2ZW5jb2RlX3RhZyI6InByb2ZpbGVfcGljLmRqYW5nby4xMDgwLmMyIn0&_nc_ht=instagram.fhyd7-1.fna.fbcdn.net&_nc_cat=100&_nc_oc=Q6cZ2gGh5rAhwzsQAiHLhM8Oj1sGd3WE5QPFA9wmUZMkAUKrORfO-JQl2eIpaan42EDr8dw&_nc_ohc=BQ2Fz-DPLdsQ7kNvwGK8RS3&_nc_gid=4rUVDcsqXS7GDATjHx6tqw&edm=AOQ1c0wBAAAA&ccb=7-5&oh=00_AQDfv_XYA5kbm9oR7TivfCgDmEA5UzsBQOUgjXqZ_YgUxQ&oe=6A4F9721&_nc_sid=8b3546",
+  "profile_pic_url_hd": "https://instagram.fhyd7-1.fna.fbcdn.net/v/t51.82787-19/698830179_18100821547917012_3532847996114615939_n.jpg?stp=dst-jpg_s320x320_tt6&efg=eyJ2ZW5jb2RlX3RhZyI6InByb2ZpbGVfcGljLmRqYW5nby4xMDgwLmMyIn0&_nc_ht=instagram.fhyd7-1.fna.fbcdn.net&_nc_cat=100&_nc_oc=Q6cZ2gGh5rAhwzsQAiHLhM8Oj1sGd3WE5QPFA9wmUZMkAUKrORfO-JQl2eIpaan42EDr8dw&_nc_ohc=BQ2Fz-DPLdsQ7kNvwGK8RS3&_nc_gid=4rUVDcsqXS7GDATjHx6tqw&edm=AOQ1c0wBAAAA&ccb=7-5&oh=00_AQBzdL0HbhcU-eMhzZpw8jGw4xK7sxxXMxohNiYmLL7q6g&oe=6A4F9721&_nc_sid=8b3546",
+  "pronouns": [],
+  "requested_by_viewer": false,
+  "restricted_by_viewer": false,
+  "should_show_category": false,
+  "should_show_public_contacts": false,
+  "show_account_transparency_details": true,
+  "transparency_label": null,
+  "transparency_product": null,
+  "username": "founderbusinesstech"
+}
