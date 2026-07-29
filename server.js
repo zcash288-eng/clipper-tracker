@@ -3,6 +3,11 @@ const axios = require('axios');
 const cors = require('cors');
 const path = require('path');
 const fs = require('fs');
+const helmet = require('helmet');
+const rateLimit = require('express-rate-limit');
+const { Mutex } = require('async-mutex');
+
+const dbMutex = new Mutex();
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -45,19 +50,22 @@ function writeDb(data) {
     fs.writeFileSync(DB_PATH, JSON.stringify(data, null, 2));
     return true;
   } catch (e) {
-    console.error("Error writing database JSON file:", e.message);
+    console.error("Error writing database JSON file:", e.message, "Data preview:", JSON.stringify(data).substring(0, 500));
     return false;
   }
 }
 
-app.use(cors());
-app.use(express.json({ limit: '10mb' }));
-app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+app.use(helmet());
+app.use(cors({ origin: 'http://localhost:3000' }));
+app.use(rateLimit({ windowMs: 15 * 60 * 1000, max: 1000 }));
+app.use(express.json({ limit: '2mb' }));
+app.use(express.urlencoded({ extended: true, limit: '2mb' }));
 app.use(express.static(path.join(__dirname, 'public')));
 
 // Helper to convert views strings to integer
 function parseViewsText(viewsText) {
   if (!viewsText) return 0;
+  if (viewsText.toString().length > 50) return 0; // L-21
   const cleanStr = viewsText.toString().toLowerCase().replace(/views/g, '').replace(/,/g, '').trim();
   if (cleanStr.includes('b')) {
     return Math.round(parseFloat(cleanStr.replace('b', '')) * 1000000000);
@@ -122,33 +130,37 @@ async function getChannelIdFromHandle(handle) {
 
 // Fetch YouTube RSS feed
 async function getRssVideos(channelId) {
-  const url = `https://www.youtube.com/feeds/videos.xml?channel_id=${channelId}`;
-  const response = await axios.get(url, { timeout: 10000 });
-  const xml = response.data;
-  
   const entries = [];
-  const entryRegex = /<entry>([\s\S]*?)<\/entry>/g;
-  let match;
-  
-  while ((match = entryRegex.exec(xml)) !== null) {
-    const entryXml = match[1];
-    const idMatch = entryXml.match(/<yt:videoId>([^<]+)<\/yt:videoId>/);
-    let titleMatch = entryXml.match(/<title>([\s\S]*?)<\/title>/);
-    const publishedMatch = entryXml.match(/<published>([^<]+)<\/published>/);
-    const updatedMatch = entryXml.match(/<updated>([^<]+)<\/updated>/);
+  try {
+    const url = `https://www.youtube.com/feeds/videos.xml?channel_id=${channelId}`;
+    const response = await axios.get(url, { timeout: 10000 });
+    const xml = response.data;
     
-    if (idMatch && titleMatch) {
-      let title = titleMatch[1];
-      if (title.startsWith('<![CDATA[')) {
-        title = title.replace(/^<!\[CDATA\[([\s\S]*?)\]\]>$/, '$1');
+    const entryRegex = /<entry>([\s\S]*?)<\/entry>/g;
+    let match;
+    
+    while ((match = entryRegex.exec(xml)) !== null) {
+      const entryXml = match[1];
+      const idMatch = entryXml.match(/<yt:videoId>([^<]+)<\/yt:videoId>/);
+      let titleMatch = entryXml.match(/<title>([\s\S]*?)<\/title>/);
+      const publishedMatch = entryXml.match(/<published>([^<]+)<\/published>/);
+      const updatedMatch = entryXml.match(/<updated>([^<]+)<\/updated>/);
+      
+      if (idMatch && titleMatch) {
+        let title = titleMatch[1];
+        if (title.startsWith('<![CDATA[')) {
+          title = title.replace(/^<!\[CDATA\[([\s\S]*?)\]\]>$/, '$1');
+        }
+        entries.push({
+          videoId: idMatch[1],
+          title: title,
+          published: publishedMatch ? publishedMatch[1] : null,
+          updated: updatedMatch ? updatedMatch[1] : null
+        });
       }
-      entries.push({
-        videoId: idMatch[1],
-        title: title,
-        published: publishedMatch ? publishedMatch[1] : null,
-        updated: updatedMatch ? updatedMatch[1] : null
-      });
     }
+  } catch (e) {
+    console.error(`Error fetching RSS feed for ${channelId}:`, e.message);
   }
   return entries;
 }
@@ -162,7 +174,9 @@ function extractVideosFromYtData(html) {
   try {
     const data = JSON.parse(ytDataMatch[1]);
     
+    let iterations = 0;
     function findVideos(obj, depth = 0) {
+      if (iterations++ > 100000) return;
       if (!obj || typeof obj !== 'object') return;
       if (depth > 20) return;
       
@@ -227,6 +241,7 @@ function extractVideosFromYtData(html) {
       
       for (const key in obj) {
         if (Object.prototype.hasOwnProperty.call(obj, key)) {
+          if (key === '__proto__' || key === 'constructor' || key === 'prototype') continue;
           findVideos(obj[key], depth + 1);
         }
       }
@@ -240,7 +255,7 @@ function extractVideosFromYtData(html) {
 }
 
 // Get combined YouTube channel data
-async function getYouTubeChannelData(handle) {
+async function getYouTubeChannelData(handle, existingVideos = []) {
   const channelId = await getChannelIdFromHandle(handle);
   const rssVideos = await getRssVideos(channelId);
   const cleanHandle = handle.startsWith('@') ? handle : `@${handle}`;
@@ -317,7 +332,7 @@ async function getYouTubeChannelData(handle) {
                 }
                 subscriberCount = subStr;
             }
-        } catch (e) {}
+        } catch (e) { console.error("YT parse error:", e.message); }
     }
   }
   
@@ -334,9 +349,9 @@ async function getYouTubeChannelData(handle) {
     };
   });
   
-    const db = readDb();
-    const existingChannel = db.trackedChannels.find(c => c.platform === 'youtube' && c.handle.toLowerCase() === handle.toLowerCase());
-    const existingVideos = existingChannel ? existingChannel.videos : [];
+    if (parsedVideos.length === 0 && rssVideos.length === 0) {
+      return { success: false, error: 'Could not parse YouTube data. Format may have changed.' };
+    }
 
     // 1. Ensure all existing videos are preserved in our new list if not already there from RSS
     existingVideos.forEach(ev => {
@@ -401,13 +416,16 @@ function parseInstagramHtml(html, handle) {
         try {
           const data = JSON.parse(jsonStr);
           
-          function findData(obj) {
+          let iterations = 0;
+          function findData(obj, depth = 0) {
+            if (iterations++ > 100000) return false;
+            if (depth > 20) return false;
             if (!obj || typeof obj !== 'object') return false;
             
             if (obj.profile_pic_url) profilePic = obj.profile_pic_url_hd || obj.profile_pic_url;
             if (obj.full_name) authorName = obj.full_name;
             if (obj.edge_followed_by && typeof obj.edge_followed_by.count === 'number') {
-              followerCount = `${obj.edge_followed_by.count.toLocaleString()} followers`;
+              followerCount = `${obj.edge_followed_by.count.toLocaleString('en-US')} followers`;
             }
             if (obj.edge_owner_to_timeline_media && obj.edge_owner_to_timeline_media.edges) {
               const edges = obj.edge_owner_to_timeline_media.edges;
@@ -418,7 +436,7 @@ function parseInstagramHtml(html, handle) {
                     videoId: node.shortcode,
                     title: node.edge_media_to_caption?.edges?.[0]?.node?.text || "Instagram Post",
                     publishedAt: node.taken_at_timestamp ? new Date(node.taken_at_timestamp * 1000).toISOString() : new Date().toISOString(),
-                    views: node.video_view_count ? `${node.video_view_count.toLocaleString()} views` : (node.play_count ? `${node.play_count.toLocaleString()} views` : '0 views'),
+                    views: node.video_view_count ? `${node.video_view_count.toLocaleString('en-US')} views` : (node.play_count ? `${node.play_count.toLocaleString('en-US')} views` : '0 views'),
                     thumbnail: node.thumbnail_src || 'https://images.unsplash.com/photo-1611162617213-7d7a39e9b1d7?w=120&auto=format&fit=crop&q=60',
                     url: `https://instagram.com/reel/${node.shortcode}`
                   });
@@ -430,11 +448,13 @@ function parseInstagramHtml(html, handle) {
 
             for (const key in obj) {
                 if (Object.prototype.hasOwnProperty.call(obj, key)) {
-                    if (findData(obj[key])) return true;
+                    if (key === '__proto__' || key === 'constructor' || key === 'prototype') continue;
+                    if (findData(obj[key], depth + 1)) return true;
                 }
             }
             return false;
           }
+          
           findData(data);
           jsonParsed = true;
           break;
@@ -481,69 +501,111 @@ function parseInstagramHtml(html, handle) {
 // --- Endpoints ---
 
 // Load DB
-app.get('/api/db', (req, res) => {
-  res.json(readDb());
+app.get('/api/db', async (req, res) => {
+  const db = readDb();
+  const safeSettings = { ...db.settings };
+  delete safeSettings.bufferToken;
+  delete safeSettings.igSessionId;
+  res.json({ ...db, settings: safeSettings });
 });
 
 // Update database components
-app.post('/api/db/channels', (req, res) => {
-  const db = readDb();
-  db.trackedChannels = req.body;
-  if (!writeDb(db)) return res.status(500).json({ success: false, error: 'Failed to save' });
-  res.json({ success: true });
-});
-
-app.post('/api/db/schedules', (req, res) => {
-  const db = readDb();
-  db.schedulerList = req.body;
-  if (!writeDb(db)) return res.status(500).json({ success: false, error: 'Failed to save' });
-  res.json({ success: true });
-});
-
-app.delete('/api/db/schedules/:index', (req, res) => {
-  const db = readDb();
-  const index = parseInt(req.params.index, 10);
-  if (index >= 0 && index < db.schedulerList.length) {
-    db.schedulerList.splice(index, 1);
-    if (!writeDb(db)) return res.status(500).json({ success: false, error: 'Failed to save' });
-    res.json({ success: true });
-  } else {
-    res.status(404).json({ success: false, error: 'Schedule not found' });
+app.post('/api/db/channels', async (req, res) => {
+  if (!Array.isArray(req.body)) return res.status(400).json({ success: false, error: 'Expected array' });
+  try {
+    await dbMutex.runExclusive(async () => {
+      const db = readDb();
+      db.trackedChannels = req.body;
+      if (!writeDb(db)) throw new Error('Failed to save DB');
+      res.json({ success: true });
+    });
+  } catch (e) {
+    res.status(500).json({ success: false, error: e.message });
   }
 });
 
-app.post('/api/db/matchups', (req, res) => {
-  const db = readDb();
-  db.matchupsList = req.body;
-  if (!writeDb(db)) return res.status(500).json({ success: false, error: 'Failed to save' });
-  res.json({ success: true });
+app.post('/api/db/schedules', async (req, res) => {
+  if (!Array.isArray(req.body)) return res.status(400).json({ success: false, error: 'Expected array' });
+  try {
+    await dbMutex.runExclusive(async () => {
+      const db = readDb();
+      db.schedulerList = req.body;
+      if (!writeDb(db)) throw new Error('Failed to save DB');
+      res.json({ success: true });
+    });
+  } catch (e) {
+    res.status(500).json({ success: false, error: e.message });
+  }
 });
 
-app.post('/api/db/settings', (req, res) => {
-    const db = readDb();
-    const allowedKeys = ['neglectThreshold', 'audioEnabled', 'browserNotifEnabled', 'igSessionId', 'bufferToken'];
-    const newSettings = {};
-    for (const key of allowedKeys) {
-        if (req.body[key] !== undefined) {
-            newSettings[key] = req.body[key];
-        }
-    }
-    db.settings = { ...db.settings, ...newSettings };
-    if (!writeDb(db)) return res.status(500).json({ success: false, error: 'Failed to save' });
-    res.json(db.settings);
+app.delete('/api/db/schedules/:index', async (req, res) => {
+  try {
+    await dbMutex.runExclusive(async () => {
+      const db = readDb();
+      const index = parseInt(req.params.index, 10);
+      if (index >= 0 && index < db.schedulerList.length) {
+        db.schedulerList.splice(index, 1);
+        if (!writeDb(db)) throw new Error('Failed to save DB');
+        res.json({ success: true });
+      } else {
+        res.status(404).json({ success: false, error: 'Index out of bounds' });
+      }
+    });
+  } catch (e) {
+    res.status(500).json({ success: false, error: e.message });
+  }
 });
 
-app.put('/api/db/channels/:platform/:handle/note', (req, res) => {
+app.post('/api/db/matchups', async (req, res) => {
+  if (!Array.isArray(req.body)) return res.status(400).json({ success: false, error: 'Expected array' });
+  try {
+    await dbMutex.runExclusive(async () => {
+      const db = readDb();
+      db.matchupsList = req.body;
+      if (!writeDb(db)) throw new Error('Failed to save DB');
+      res.json({ success: true });
+    });
+  } catch (e) {
+    res.status(500).json({ success: false, error: e.message });
+  }
+});
+
+app.post('/api/db/settings', async (req, res) => {
+  try {
+    await dbMutex.runExclusive(async () => {
+      const db = readDb();
+      const allowedKeys = ['neglectThreshold', 'audioEnabled', 'browserNotifEnabled', 'igSessionId', 'bufferToken'];
+      const newSettings = {};
+      for (const key of allowedKeys) {
+          if (req.body[key] !== undefined) {
+              newSettings[key] = req.body[key];
+          }
+      }
+      db.settings = { ...db.settings, ...newSettings };
+      if (!writeDb(db)) throw new Error('Failed to save DB');
+      res.json(db.settings);
+    });
+  } catch (e) {
+    res.status(500).json({ success: false, error: e.message });
+  }
+});
+
+app.put('/api/db/channels/:platform/:handle/note', async (req, res) => {
     const { platform, handle } = req.params;
     const { note } = req.body;
     try {
-        const db = readDb();
-        const idx = db.trackedChannels.findIndex(c => c.platform === platform && c.handle.toLowerCase() === handle.toLowerCase());
-        if (idx === -1) return res.status(404).json({ error: 'Channel not found' });
-        
-        db.trackedChannels[idx].note = note;
-        if (!writeDb(db)) return res.status(500).json({ success: false, error: 'Failed to save' });
-        res.json({ success: true, note });
+        await dbMutex.runExclusive(async () => {
+            const db = readDb();
+            const idx = db.trackedChannels.findIndex(c => c.platform === platform && c.handle.toLowerCase() === handle.toLowerCase());
+            if (idx === -1) {
+                res.status(404).json({ error: 'Channel not found' });
+                return;
+            }
+            
+            db.trackedChannels[idx].note = note;
+            if (!writeDb(db)) return res.status(500).json({ success: false, error: 'Failed to save' });
+            res.json({ success: true, note });
+        });
     } catch (e) {
         res.status(500).json({ error: e.message });
     }
@@ -552,32 +614,85 @@ app.put('/api/db/channels/:platform/:handle/note', (req, res) => {
 app.get('/api/youtube/:handle', async (req, res) => {
   try {
     const handle = req.params.handle;
-    const data = await getYouTubeChannelData(handle);
+    if (!/^[a-zA-Z0-9_.-]+$/.test(handle.replace(/^@/, ''))) {
+      return res.status(400).json({ success: false, error: "Invalid handle" });
+    }
     
+    let existingVideos = [];
+    // Read once to pass existing videos
+    const tempDb = readDb();
+    const tempChannel = tempDb.trackedChannels.find(c => c.platform === 'youtube' && c.handle.toLowerCase() === handle.toLowerCase());
+    if (tempChannel) existingVideos = tempChannel.videos;
+
+    let data = await getYouTubeChannelData(handle, existingVideos);
+    
+    // Graceful fallback to existing DB data if YouTube scraper fails (e.g., rate limit or 404)
+    if (!data.success && tempChannel) {
+        console.warn(`[YouTube Scraper] Failed for @${handle}: ${data.error}. Relying on DB fallback.`);
+        data = {
+            success: true,
+            channelId: tempChannel.channelId || null,
+            handle: tempChannel.handle,
+            authorName: tempChannel.authorName,
+            avatar: tempChannel.avatar,
+            subscriberCount: tempChannel.subscriberCount,
+            videos: tempChannel.videos
+        };
+    }
+
     if (data.success) {
-      const db = readDb();
-      
-      const idx = db.trackedChannels.findIndex(c => c.platform === 'youtube' && c.handle.toLowerCase() === handle.toLowerCase());
-      const channelObj = {
-        platform: 'youtube',
-        handle,
-        authorName: data.authorName || handle,
-        avatar: data.avatar || (db.trackedChannels[idx] ? db.trackedChannels[idx].avatar : 'https://cdn-icons-png.flaticon.com/512/1384/1384060.png'),
-        subscriberCount: data.subscriberCount || 'N/A',
-        videos: data.videos || [],
-        lastSyncTime: new Date().toISOString()
-      };
-      
-      if (idx !== -1) {
-        db.trackedChannels[idx] = { ...db.trackedChannels[idx], ...channelObj };
-      } else {
-        db.trackedChannels.push(channelObj);
+      try {
+        await dbMutex.runExclusive(async () => {
+          const db = readDb();
+          
+          const idx = db.trackedChannels.findIndex(c => c.platform === 'youtube' && c.handle.toLowerCase() === handle.toLowerCase());
+          
+          if (idx !== -1) {
+            // Update only specific fields to avoid race condition data loss
+            db.trackedChannels[idx].authorName = data.authorName || db.trackedChannels[idx].authorName;
+            db.trackedChannels[idx].avatar = data.avatar || db.trackedChannels[idx].avatar;
+            db.trackedChannels[idx].subscriberCount = data.subscriberCount || db.trackedChannels[idx].subscriberCount;
+            
+            // Merge fresh videos carefully
+            const existingVideoMap = new Map();
+            if (db.trackedChannels[idx].videos) {
+              db.trackedChannels[idx].videos.forEach(v => existingVideoMap.set(v.videoId, v));
+            }
+            
+            data.videos.forEach(newV => {
+              const oldV = existingVideoMap.get(newV.videoId);
+              if (oldV) {
+                oldV.views = newV.views || oldV.views;
+                oldV.thumbnail = newV.thumbnail || oldV.thumbnail;
+                if (!oldV.publishedAt && newV.publishedAt) oldV.publishedAt = newV.publishedAt;
+              } else {
+                existingVideoMap.set(newV.videoId, newV);
+              }
+            });
+            
+            db.trackedChannels[idx].videos = Array.from(existingVideoMap.values());
+            db.trackedChannels[idx].lastSyncTime = new Date().toISOString();
+          } else {
+            db.trackedChannels.push({
+              platform: 'youtube',
+              handle,
+              authorName: data.authorName || handle,
+              avatar: data.avatar || 'https://cdn-icons-png.flaticon.com/512/1384/1384060.png',
+              subscriberCount: data.subscriberCount || 'N/A',
+              videos: data.videos || [],
+              lastSyncTime: new Date().toISOString()
+            });
+          }
+          
+          data.videos.forEach(v => {
+            logVideoHistory(db, 'youtube', handle, v.videoId, v.views);
+          });
+          if (!writeDb(db)) throw new Error('Failed to save DB');
+        });
+      } catch (err) {
+        console.error("YouTube Sync DB Write Error:", err.message);
+        return res.status(500).json({ success: false, error: 'Database write failed during sync' });
       }
-      
-      data.videos.forEach(v => {
-        logVideoHistory(db, 'youtube', handle, v.videoId, v.views);
-      });
-      if (!writeDb(db)) return res.status(500).json({ success: false, error: 'Failed to save' });
     }
     
     res.json(data);
@@ -614,7 +729,7 @@ app.get('/api/instagram/:handle', async (req, res) => {
     // Try lightweight internet scrape JUST for avatar and followers
     try {
       const cookieHeader = db.settings.igSessionId ? { 'Cookie': db.settings.igSessionId } : {};
-      const url = `https://www.instagram.com/api/v1/users/web_profile_info/?username=${handle}`;
+      const url = `https://www.instagram.com/api/v1/users/web_profile_info/?username=${encodeURIComponent(handle)}`;
       const response = await axios.get(url, {
         headers: {
           'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
@@ -638,25 +753,27 @@ app.get('/api/instagram/:handle', async (req, res) => {
     }
     
     // Save/Update the channel in DB
-    if (idx !== -1) {
-      db.trackedChannels[idx].authorName = fallbackData.authorName;
-      db.trackedChannels[idx].avatar = fallbackData.avatar;
-      db.trackedChannels[idx].subscriberCount = fallbackData.subscriberCount;
-      db.trackedChannels[idx].lastSyncTime = new Date().toISOString();
-      // We purposefully DO NOT touch the videos array so Buffer data remains intact
-    } else {
-      // Add the new Instagram channel so it persists
-      db.trackedChannels.push({
-        platform: 'instagram',
-        handle,
-        authorName: fallbackData.authorName,
-        avatar: fallbackData.avatar,
-        subscriberCount: fallbackData.subscriberCount,
-        videos: fallbackData.videos,
-        lastSyncTime: new Date().toISOString()
-      });
-    }
-    if (!writeDb(db)) return res.status(500).json({ success: false, error: 'Failed to save' });
+    await dbMutex.runExclusive(async () => {
+      const freshDb = readDb();
+      const freshIdx = freshDb.trackedChannels.findIndex(c => c.platform === 'instagram' && c.handle.toLowerCase() === handle.toLowerCase());
+      if (freshIdx !== -1) {
+        freshDb.trackedChannels[freshIdx].authorName = fallbackData.authorName;
+        freshDb.trackedChannels[freshIdx].avatar = fallbackData.avatar;
+        freshDb.trackedChannels[freshIdx].subscriberCount = fallbackData.subscriberCount;
+        freshDb.trackedChannels[freshIdx].lastSyncTime = new Date().toISOString();
+      } else {
+        freshDb.trackedChannels.push({
+          platform: 'instagram',
+          handle,
+          authorName: fallbackData.authorName,
+          avatar: fallbackData.avatar,
+          subscriberCount: fallbackData.subscriberCount,
+          videos: fallbackData.videos,
+          lastSyncTime: new Date().toISOString()
+        });
+      }
+      if (!writeDb(freshDb)) throw new Error('Failed to save DB');
+    });
     
     res.json(fallbackData);
   } catch (error) {
@@ -665,7 +782,7 @@ app.get('/api/instagram/:handle', async (req, res) => {
 });
 
 // Manual Instagram HTML Import Parser endpoint
-app.post('/api/instagram/parse-html', (req, res) => {
+app.post('/api/instagram/parse-html', async (req, res) => {
   const { handle, html } = req.body;
   if (!handle || !html) {
     return res.status(400).json({ success: false, error: 'Missing handle or html body content.' });
@@ -675,36 +792,44 @@ app.post('/api/instagram/parse-html', (req, res) => {
     let data;
     if (html.trim().startsWith('{')) {
       // Direct console JSON bypass
-      data = JSON.parse(html);
-      data.success = true;
+      const parsed = JSON.parse(html);
+      data = {
+          success: true,
+          authorName: parsed.authorName,
+          avatar: parsed.avatar,
+          subscriberCount: parsed.subscriberCount,
+          videos: Array.isArray(parsed.videos) ? parsed.videos : []
+      };
     } else {
       data = parseInstagramHtml(html, handle);
     }
     
     if (data.success) {
-      const db = readDb();
-      
-      const idx = db.trackedChannels.findIndex(c => c.platform === 'instagram' && c.handle.toLowerCase() === handle.toLowerCase());
-      const channelObj = {
-        platform: 'instagram',
-        handle,
-        authorName: data.authorName || handle,
-        avatar: data.avatar || (db.trackedChannels[idx] ? db.trackedChannels[idx].avatar : 'https://cdn-icons-png.flaticon.com/512/1384/1384063.png'),
-        subscriberCount: data.subscriberCount || 'N/A',
-        videos: data.videos || [],
-        lastSyncTime: new Date().toISOString()
-      };
-      
-      if (idx !== -1) {
-        db.trackedChannels[idx] = { ...db.trackedChannels[idx], ...channelObj };
-      } else {
-        db.trackedChannels.push(channelObj);
-      }
-      
-      data.videos.forEach(v => {
-        logVideoHistory(db, 'instagram', handle, v.videoId, v.views);
+      await dbMutex.runExclusive(async () => {
+        const db = readDb();
+        
+        const idx = db.trackedChannels.findIndex(c => c.platform === 'instagram' && c.handle.toLowerCase() === handle.toLowerCase());
+        const channelObj = {
+          platform: 'instagram',
+          handle,
+          authorName: data.authorName || handle,
+          avatar: data.avatar || (db.trackedChannels[idx] ? db.trackedChannels[idx].avatar : 'https://cdn-icons-png.flaticon.com/512/1384/1384063.png'),
+          subscriberCount: data.subscriberCount || 'N/A',
+          videos: data.videos || [],
+          lastSyncTime: new Date().toISOString()
+        };
+        
+        if (idx !== -1) {
+          db.trackedChannels[idx] = { ...db.trackedChannels[idx], ...channelObj };
+        } else {
+          db.trackedChannels.push(channelObj);
+        }
+        
+        data.videos.forEach(v => {
+          logVideoHistory(db, 'instagram', handle, v.videoId, v.views);
+        });
+        if (!writeDb(db)) throw new Error('Failed to save DB');
       });
-      if (!writeDb(db)) return res.status(500).json({ success: false, error: 'Failed to save' });
     }
     res.json(data);
   } catch (e) {
@@ -773,8 +898,11 @@ app.post('/api/buffer/channels', async (req, res) => {
 
   // Save the token if it's new
   if (req.body.token && db.settings.bufferToken !== req.body.token) {
-    db.settings.bufferToken = req.body.token;
-    if (!writeDb(db)) return res.status(500).json({ success: false, error: 'Failed to save' });
+    await dbMutex.runExclusive(async () => {
+      const freshDb = readDb();
+      freshDb.settings.bufferToken = req.body.token;
+      if (!writeDb(freshDb)) throw new Error('Failed to save DB');
+    });
   }
 
   const query = `
@@ -791,7 +919,8 @@ app.post('/api/buffer/channels', async (req, res) => {
 
   try {
     const orgRes = await axios.post('https://api.buffer.com', { query }, {
-      headers: { 'Authorization': `Bearer ${token}` }
+      headers: { 'Authorization': `Bearer ${token}` },
+      timeout: 10000
     });
     
     if (orgRes.data.errors) throw new Error(orgRes.data.errors[0].message);
@@ -805,12 +934,14 @@ app.post('/api/buffer/channels', async (req, res) => {
           id
           service
           name
+          avatar
         }
       }
     `;
 
     const channelRes = await axios.post('https://api.buffer.com', { query: channelQuery }, {
-      headers: { 'Authorization': `Bearer ${token}` }
+      headers: { 'Authorization': `Bearer ${token}` },
+      timeout: 10000
     });
     
     if (channelRes.data.errors) throw new Error(channelRes.data.errors[0].message);
@@ -840,21 +971,30 @@ app.post('/api/buffer/sync', async (req, res) => {
   // even if the Buffer API call fails below (e.g. token expired)
   const finalHandle = handle || channelId;
   const finalPlatform = platform || 'instagram';
-  let indexToPatch = db.trackedChannels.findIndex(c => c.handle.toLowerCase() === finalHandle.toLowerCase() && c.platform === finalPlatform);
-  if (indexToPatch !== -1) {
-    let updated = false;
-    if (!db.trackedChannels[indexToPatch].avatar) {
-      db.trackedChannels[indexToPatch].avatar = avatar || 'https://cdn-icons-png.flaticon.com/512/1384/1384063.png';
-      updated = true;
+  await dbMutex.runExclusive(async () => {
+    const db = readDb();
+    let indexToPatch = db.trackedChannels.findIndex(c => c.handle.toLowerCase() === finalHandle.toLowerCase() && c.platform === finalPlatform);
+    if (indexToPatch !== -1) {
+      let updated = false;
+      const currentAvatar = db.trackedChannels[indexToPatch].avatar;
+      if (!currentAvatar || currentAvatar === 'https://cdn-icons-png.flaticon.com/512/1384/1384063.png' || (avatar && avatar !== currentAvatar)) {
+        if (avatar) {
+          db.trackedChannels[indexToPatch].avatar = avatar;
+          updated = true;
+        } else if (!currentAvatar) {
+          db.trackedChannels[indexToPatch].avatar = 'https://cdn-icons-png.flaticon.com/512/1384/1384063.png';
+          updated = true;
+        }
+      }
+      if (!db.trackedChannels[indexToPatch].authorName && authorName) {
+        db.trackedChannels[indexToPatch].authorName = authorName;
+        updated = true;
+      }
+      if (updated) {
+        if (!writeDb(db)) throw new Error('Failed to save avatar patch');
+      }
     }
-    if (!db.trackedChannels[indexToPatch].authorName && authorName) {
-      db.trackedChannels[indexToPatch].authorName = authorName;
-      updated = true;
-    }
-    if (updated) {
-      if (!writeDb(db)) return res.status(500).json({ success: false, error: 'Failed to save' });
-    }
-  }
+  });
 
   const safeOrgId = organizationId ? organizationId.toString().replace(/[^a-zA-Z0-9_-]/g, '') : '';
   const safeChannelId = channelId ? channelId.toString().replace(/[^a-zA-Z0-9_-]/g, '') : '';
@@ -891,7 +1031,8 @@ app.post('/api/buffer/sync', async (req, res) => {
 
   try {
     const postRes = await axios.post('https://api.buffer.com', { query }, {
-      headers: { 'Authorization': `Bearer ${token}` }
+      headers: { 'Authorization': `Bearer ${token}` },
+      timeout: 10000
     });
     
     if (postRes.data.errors) throw new Error(postRes.data.errors[0].message);
@@ -923,56 +1064,58 @@ app.post('/api/buffer/sync', async (req, res) => {
     });
 
     // Update or Insert into DB
-    const finalHandle = handle || channelId;
-    const finalPlatform = platform || 'instagram';
+    // finalHandle and finalPlatform already defined above
     
-    // RE-READ DB to avoid race conditions!
-    const freshDb = readDb();
-    let index = freshDb.trackedChannels.findIndex(c => c.handle.toLowerCase() === finalHandle.toLowerCase() && c.platform === finalPlatform);
     
-    if (index === -1) {
-      freshDb.trackedChannels.push({
-        platform: finalPlatform,
-        handle: finalHandle,
-        authorName: authorName || finalHandle,
-        avatar: avatar || 'https://cdn-icons-png.flaticon.com/512/1384/1384063.png',
-        subscriberCount: 'N/A', // Buffer doesn't always provide followers in basic API easily
-        videos,
-        lastSyncTime: new Date().toISOString(),
-        bufferChannelId: channelId
-      });
-    } else {
+    // RE-READ DB inside mutex to avoid race conditions!
+    await dbMutex.runExclusive(async () => {
+      const freshDb = readDb();
+      let index = freshDb.trackedChannels.findIndex(c => c.handle.toLowerCase() === finalHandle.toLowerCase() && c.platform === finalPlatform);
+      
+      if (index === -1) {
+        freshDb.trackedChannels.push({
+          platform: finalPlatform,
+          handle: finalHandle,
+          authorName: authorName || finalHandle,
+          avatar: avatar || 'https://cdn-icons-png.flaticon.com/512/1384/1384063.png',
+          subscriberCount: 'N/A', // Buffer doesn't always provide followers in basic API easily
+          videos,
+          lastSyncTime: new Date().toISOString(),
+          bufferChannelId: channelId
+        });
+      } else {
+          freshDb.trackedChannels[index].bufferChannelId = channelId;
+          if (!freshDb.trackedChannels[index].avatar) {
+              freshDb.trackedChannels[index].avatar = avatar || 'https://cdn-icons-png.flaticon.com/512/1384/1384063.png';
+          }
+          if (!freshDb.trackedChannels[index].authorName && authorName) {
+              freshDb.trackedChannels[index].authorName = authorName;
+          }
+          const existingVideos = freshDb.trackedChannels[index].videos || [];
+          const existingIds = new Set(existingVideos.map(v => v.videoId));
+          for (const v of videos) {
+              if (!existingIds.has(v.videoId)) {
+                  existingVideos.push(v);
+              } else {
+                  const idx = existingVideos.findIndex(ev => ev.videoId === v.videoId);
+                  if (idx !== -1) {
+                      existingVideos[idx].views = v.views;
+                      if (v.thumbnail) existingVideos[idx].thumbnail = v.thumbnail;
+                      if (!existingVideos[idx].publishedAt && v.publishedAt) existingVideos[idx].publishedAt = v.publishedAt;
+                  }
+              }
+          }
+        freshDb.trackedChannels[index].videos = existingVideos;
+        freshDb.trackedChannels[index].lastSyncTime = new Date().toISOString();
         freshDb.trackedChannels[index].bufferChannelId = channelId;
-        if (!freshDb.trackedChannels[index].avatar) {
-            freshDb.trackedChannels[index].avatar = avatar || 'https://cdn-icons-png.flaticon.com/512/1384/1384063.png';
-        }
-        if (!freshDb.trackedChannels[index].authorName && authorName) {
-            freshDb.trackedChannels[index].authorName = authorName;
-        }
-        const existingVideos = freshDb.trackedChannels[index].videos || [];
-        const existingIds = new Set(existingVideos.map(v => v.videoId));
-        for (const v of videos) {
-            if (!existingIds.has(v.videoId)) {
-                existingVideos.push(v);
-            } else {
-                const idx = existingVideos.findIndex(ev => ev.videoId === v.videoId);
-                if (idx !== -1) {
-                    existingVideos[idx].views = v.views;
-                    if (v.thumbnail) existingVideos[idx].thumbnail = v.thumbnail;
-                    if (!existingVideos[idx].publishedAt && v.publishedAt) existingVideos[idx].publishedAt = v.publishedAt;
-                }
-            }
-        }
-      freshDb.trackedChannels[index].videos = existingVideos;
-      freshDb.trackedChannels[index].lastSyncTime = new Date().toISOString();
-      freshDb.trackedChannels[index].bufferChannelId = channelId;
-    }
+      }
 
-    videos.forEach(v => {
-      logVideoHistory(freshDb, finalPlatform, finalHandle, v.videoId, v.views);
+      videos.forEach(v => {
+        logVideoHistory(freshDb, finalPlatform, finalHandle, v.videoId, v.views);
+      });
+
+      if (!writeDb(freshDb)) throw new Error('Failed to save DB');
     });
-
-    if (!writeDb(freshDb)) return res.status(500).json({ success: false, error: 'Failed to save' });
     res.json({ success: true, videosCount: videos.length });
   } catch (e) {
     if (e.response && e.response.status === 401) {
@@ -985,12 +1128,13 @@ app.post('/api/buffer/sync', async (req, res) => {
 });
 
 
+const escapeHtml = (unsafe) => {
+    if (!unsafe) return '';
+    return unsafe.toString().replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;");
+};
+
 app.post('/api/instagram/sync-bookmarklet', async (req, res) => {
   const { handle, html } = req.body;
-  const escapeHtml = (unsafe) => {
-      if (!unsafe) return '';
-      return unsafe.toString().replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;");
-  };
   const safeHandle = escapeHtml(handle);
 
   console.log(`[Sync-Bookmarklet] Received sync request for @${handle}`);
@@ -1030,60 +1174,62 @@ app.post('/api/instagram/sync-bookmarklet', async (req, res) => {
         console.log(`[Sync-Bookmarklet] Enrichment complete.`);
       }
       
-      const db = readDb();
-      const idx = db.trackedChannels.findIndex(c => c.platform === 'instagram' && c.handle.toLowerCase() === handle.toLowerCase());
-      
-      // Build a map of existing videos for smart merging
-      const existingVideos = {};
-      if (idx !== -1 && db.trackedChannels[idx].videos) {
-        db.trackedChannels[idx].videos.forEach(v => {
-          existingVideos[v.videoId] = v;
-        });
-      }
-      
-      // Smart merge: prefer richer data from existing or new
-      const mergedVideos = (data.videos || []).map(newV => {
-        const old = existingVideos[newV.videoId] || {};
+      await dbMutex.runExclusive(async () => {
+        const db = readDb();
+        const idx = db.trackedChannels.findIndex(c => c.platform === 'instagram' && c.handle.toLowerCase() === handle.toLowerCase());
         
-        // For publishedAt: keep existing real date, or use new if it looks real (not "just now")
-        let publishedAt = old.publishedAt || newV.publishedAt;
-        // If publishedAt is within 60 seconds of the sync time, it's likely a fallback "now" date
-        const syncTime = new Date();
-        const pubDate = new Date(publishedAt);
-        if (Math.abs(syncTime - pubDate) < 120000 && old.publishedAt && Math.abs(syncTime - new Date(old.publishedAt)) > 120000) {
-          publishedAt = old.publishedAt; // keep old date, new one is fake "now"
+        // Build a map of existing videos for smart merging
+        const existingVideos = {};
+        if (idx !== -1 && db.trackedChannels[idx].videos) {
+          db.trackedChannels[idx].videos.forEach(v => {
+            existingVideos[v.videoId] = v;
+          });
         }
         
-        return {
-          videoId: newV.videoId,
-          title: (newV.title && newV.title !== 'Instagram Reel') ? newV.title : (old.title || newV.title || 'Instagram Reel'),
-          publishedAt: publishedAt,
-          views: (newV.views && newV.views !== '0 views') ? newV.views : (old.views || newV.views || '0 views'),
-          thumbnail: (newV.thumbnail && newV.thumbnail.length > 10) ? newV.thumbnail : (old.thumbnail || newV.thumbnail || ''),
-          url: newV.url || old.url || ''
+        // Smart merge: prefer richer data from existing or new
+        const mergedVideos = (data.videos || []).map(newV => {
+          const old = existingVideos[newV.videoId] || {};
+          
+          // For publishedAt: keep existing real date, or use new if it looks real (not "just now")
+          let publishedAt = old.publishedAt || newV.publishedAt;
+          // If publishedAt is within 60 seconds of the sync time, it's likely a fallback "now" date
+          const syncTime = new Date();
+          const pubDate = new Date(publishedAt);
+          if (Math.abs(syncTime - pubDate) < 120000 && old.publishedAt && Math.abs(syncTime - new Date(old.publishedAt)) > 120000) {
+            publishedAt = old.publishedAt; // keep old date, new one is fake "now"
+          }
+          
+          return {
+            videoId: newV.videoId,
+            title: (newV.title && newV.title !== 'Instagram Reel') ? newV.title : (old.title || newV.title || 'Instagram Reel'),
+            publishedAt: publishedAt,
+            views: (newV.views && newV.views !== '0 views') ? newV.views : (old.views || newV.views || '0 views'),
+            thumbnail: (newV.thumbnail && newV.thumbnail.length > 10) ? newV.thumbnail : (old.thumbnail || newV.thumbnail || ''),
+            url: newV.url || old.url || ''
+          };
+        });
+        
+        const channelObj = {
+          platform: 'instagram',
+          handle,
+          authorName: data.authorName || (idx !== -1 ? db.trackedChannels[idx].authorName : handle),
+          avatar: data.avatar || (idx !== -1 ? db.trackedChannels[idx].avatar : 'https://cdn-icons-png.flaticon.com/512/1384/1384063.png'),
+          subscriberCount: data.subscriberCount || (idx !== -1 ? db.trackedChannels[idx].subscriberCount : 'N/A'),
+          videos: mergedVideos,
+          lastSyncTime: new Date().toISOString()
         };
+        
+        if (idx !== -1) {
+          db.trackedChannels[idx] = { ...db.trackedChannels[idx], ...channelObj };
+        } else {
+          db.trackedChannels.push(channelObj);
+        }
+        
+        mergedVideos.forEach(v => {
+          logVideoHistory(db, 'instagram', handle, v.videoId, v.views);
+        });
+        if (!writeDb(db)) throw new Error('Failed to save DB');
       });
-      
-      const channelObj = {
-        platform: 'instagram',
-        handle,
-        authorName: data.authorName || (idx !== -1 ? db.trackedChannels[idx].authorName : handle),
-        avatar: data.avatar || (idx !== -1 ? db.trackedChannels[idx].avatar : 'https://cdn-icons-png.flaticon.com/512/1384/1384063.png'),
-        subscriberCount: data.subscriberCount || (idx !== -1 ? db.trackedChannels[idx].subscriberCount : 'N/A'),
-        videos: mergedVideos,
-        lastSyncTime: new Date().toISOString()
-      };
-      
-      if (idx !== -1) {
-        db.trackedChannels[idx] = { ...db.trackedChannels[idx], ...channelObj };
-      } else {
-        db.trackedChannels.push(channelObj);
-      }
-      
-      mergedVideos.forEach(v => {
-        logVideoHistory(db, 'instagram', handle, v.videoId, v.views);
-      });
-      if (!writeDb(db)) return res.status(500).json({ success: false, error: 'Failed to save' });
       
       console.log(`[Sync-Bookmarklet] Saved ${mergedVideos.length} videos for @${handle}. Sample: title="${mergedVideos[0]?.title}", thumb=${mergedVideos[0]?.thumbnail ? 'YES' : 'NO'}`);
       
@@ -1125,17 +1271,21 @@ app.post('/api/instagram/sync-bookmarklet', async (req, res) => {
 });
 
 // Background Auto-Sync loop (every 30 minutes)
+let serverInstance;
 setInterval(async () => {
   console.log("Running background auto-sync...");
-  const initialDb = readDb();
+  const channelsToSync = readDb().trackedChannels.map(c => ({platform: c.platform, handle: c.handle}));
+  const currentPort = serverInstance ? serverInstance.address().port : PORT;
   
-  for (const channel of initialDb.trackedChannels) {
+  for (const channel of channelsToSync) {
     if (channel.platform === 'youtube' || channel.platform === 'instagram') {
       try {
+        const stillExists = readDb().trackedChannels.some(c => c.platform === channel.platform && c.handle === channel.handle);
+        if (!stillExists) continue;
+
         console.log(`Auto-syncing ${channel.platform} handle @${channel.handle}...`);
-        // We call our own API endpoint because it already contains the robust DB updating logic
-        // and handles data extraction + rate limit fallbacks correctly.
-        await axios.get(`http://127.0.0.1:${PORT}/api/${channel.platform}/${channel.handle}`);
+        await axios.get(`http://127.0.0.1:${currentPort}/api/${channel.platform}/${channel.handle}`);
+        await new Promise(r => setTimeout(r, 2000));
       } catch (e) {
         console.error("Auto-sync error for", channel.platform, channel.handle, e.message);
       }
@@ -1157,8 +1307,9 @@ app.get('/api/proxy-image', async (req, res) => {
     try {
       const parsedUrl = new URL(targetUrl);
       const hostname = parsedUrl.hostname.toLowerCase();
-      if (hostname === 'localhost' || hostname === '127.0.0.1' || hostname === '::1' || hostname.startsWith('169.254')) {
-        return res.status(400).send('SSRF not allowed');
+      const allowedDomains = ['ytimg.com', 'instagram.com', 'fbcdn.net', 'buffer.com', 'unsplash.com', 'flaticon.com'];
+      if (!allowedDomains.some(d => hostname === d || hostname.endsWith('.' + d))) {
+          return res.status(400).send('SSRF not allowed');
       }
     } catch (e) {
       return res.status(400).send('Invalid url format');
@@ -1167,14 +1318,32 @@ app.get('/api/proxy-image', async (req, res) => {
     const response = await axios.get(targetUrl, {
       responseType: 'stream',
       timeout: 10000,
+      maxContentLength: 10 * 1024 * 1024,
       headers: {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
       }
     });
     
+    const contentType = response.headers['content-type'];
+    if (!contentType || !contentType.startsWith('image/')) {
+        return res.status(400).send('Invalid content type');
+    }
+    
     // Pass along the content type
-    res.setHeader('Content-Type', response.headers['content-type']);
+    res.setHeader('Content-Type', contentType);
     res.setHeader('Cache-Control', 'public, max-age=86400'); // Cache for 24 hours
+    
+    // Handle stream errors
+    response.data.on('error', (err) => {
+      console.error('Image proxy stream error:', err.message);
+      if (!res.headersSent) res.status(500).send('Stream error');
+    });
+
+    // Destroy stream if the client disconnects early
+    req.on('close', () => {
+      response.data.destroy();
+    });
+
     response.data.pipe(res);
   } catch (e) {
     // If the image fails to load, just send a 404
@@ -1182,6 +1351,6 @@ app.get('/api/proxy-image', async (req, res) => {
   }
 });
 
-app.listen(PORT, () => {
-  console.log(`Clipper Tracker server running at http://localhost:${PORT}`);
+serverInstance = app.listen(PORT, '127.0.0.1', () => {
+  console.log(`Clipper Tracker server running at http://127.0.0.1:${PORT}`);
 });

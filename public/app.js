@@ -668,8 +668,13 @@ function initSyncButtons() {
         }
         
         for (const c of state.trackedChannels) {
-            await syncChannelData(c.platform, c.handle);
+            await syncChannelData(c.platform, c.handle, true);
         }
+        await loadStateFromServer();
+        renderAll();
+        
+        const syncText = document.getElementById('sync-text');
+        if (syncText) syncText.textContent = 'Sync Data';
     });
 }
 
@@ -793,7 +798,7 @@ function initSettingsSliders() {
                                 } catch (e) {
                                     throw new Error("Invalid response from server.");
                                 }
-                                if (syncData.success) {
+                                if (syncRes.ok && syncData.success) {
                                     showToast('Linked!', `Channel linked and ${syncData.videosCount} posts synced.`, 'success');
                                     btnEl.innerHTML = '<i class="fa-solid fa-check"></i> Linked';
                                     btnEl.disabled = true;
@@ -837,7 +842,7 @@ function initDemoButton() {
 }
 
 // --- SYNC SCRAPER LOGIC ---
-async function syncChannelData(platform, handle) {
+async function syncChannelData(platform, handle, skipRender = false) {
     const spinner = document.getElementById('sync-spinner');
     const syncText = document.getElementById('sync-text');
 
@@ -870,30 +875,34 @@ async function syncChannelData(platform, handle) {
                         bufferSuccess = true;
                     }
                 } catch (e) {
-                    console.error("Buffer sync invalid response", e);
+                    console.error("Buffer sync parse error", e);
                 }
-            } catch (e) {
-                console.error("Buffer sync failed", e);
+            } catch (err) {
+                console.error("Buffer sync fetch error", err);
             }
         } 
         
-        // Standard sync (to fetch subscriber counts and native videos for non-IG)
         let standardSuccess = false;
         let data = { success: false };
-        const response = await fetch(`/api/${platform}/${handle}`);
-        try {
-            data = await response.json();
-            if (response.ok && data.success) standardSuccess = true;
-        } catch (e) {
-            console.error("Standard sync invalid response", e);
+        
+        if (!bufferSuccess) {
+            const response = await fetch(`/api/${platform}/${handle}`);
+            try {
+                data = await response.json();
+                if (response.ok && data.success) standardSuccess = true;
+            } catch (e) {
+                console.error("Standard sync invalid response", e);
+            }
         }
 
         if (standardSuccess || bufferSuccess) {
-            await loadStateFromServer();
-            renderAll();
+            if (!skipRender) {
+                await loadStateFromServer();
+                renderAll();
+                if (syncText) syncText.textContent = 'Sync Data';
+            }
             showToast('Sync Succeeded', `Statistics updated for @${handle}`);
             if (spinner) spinner.classList.remove('spinning');
-            if (syncText) syncText.textContent = 'Sync Data';
             return;
         } else {
             console.error('[Sync Error Payload]:', data);

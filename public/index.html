@@ -7,18 +7,16 @@
     <!-- Google Fonts: Outfit (headings) & Inter (body text) -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <!-- FontAwesome for Icons -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <!-- Chart.js CDN -->
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" integrity="sha384-iw3OoTErCYJJB9mCa8LNS2hbsQ7M3C0EpIsO/H5+EGAkPGc6rk+V8i04oW/K5xq0" crossorigin="anonymous">
+    <!-- Flatpickr for Modern Date/Time Picker -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css" integrity="sha384-RkASv+6KfBMW9eknReJIJ6b3UnjKOKC5bOUaNgIY778NFbQ8MtWq9Lr/khUgqtTt" crossorigin="anonymous">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/themes/dark.css" integrity="sha384-heUUtXw0Djj2DElfLOVPlASSWFKNL3JDY6s3FEqQD03GYyWOeophY5DsfEG40sYX" crossorigin="anonymous">
     <!-- Custom Style Sheet -->
     <link rel="stylesheet" href="style.css">
     
-    <!-- Flatpickr for Modern Date/Time Picker -->
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/themes/dark.css">
-    <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+
 </head>
 <body>
     <div class="app-container">
@@ -32,20 +30,20 @@
                 </div>
             </div>
             <nav class="sidebar-menu">
-                <a href="#" class="menu-item active" data-tab="dashboard">
+                <a href="javascript:void(0)" class="menu-item active" data-tab="dashboard">
                     <i class="fa-solid fa-chart-line"></i><span>Dashboard</span>
                 </a>
-                <a href="#" class="menu-item" data-tab="platforms">
+                <a href="javascript:void(0)" class="menu-item" data-tab="platforms">
                 <i class="fa-solid fa-layer-group"></i><span>Platform Stats</span>
             </a>
-            <a href="#" class="menu-item" data-tab="accounts">
+            <a href="javascript:void(0)" class="menu-item" data-tab="accounts">
                 <i class="fa-solid fa-users-viewfinder"></i><span>Account Stats</span>
             </a>
-            <a href="#" class="menu-item" data-tab="scheduler">
+            <a href="javascript:void(0)" class="menu-item" data-tab="scheduler">
                     <i class="fa-solid fa-calendar-check"></i><span>Post Scheduler</span>
                     <span class="badge" id="schedule-badge">0</span>
                 </a>
-                <a href="#" class="menu-item" data-tab="settings">
+                <a href="javascript:void(0)" class="menu-item" data-tab="settings">
                     <i class="fa-solid fa-sliders"></i><span>Settings</span>
                 </a>
             </nav>
@@ -88,7 +86,7 @@
                         <h3>Critical Upload Warning!</h3>
                         <p id="neglect-banner-text">It has been 34 hours since your last video upload. Keep the algorithm happy by posting!</p>
                     </div>
-                    <button class="btn btn-alert-action" onclick="document.querySelector('[data-tab=scheduler]').click()">
+                    <button id="btn-alert-post-now" class="btn btn-alert-action" >
                         <i class="fa-solid fa-upload"></i> Post Now
                     </button>
                 </div>
@@ -126,7 +124,7 @@
                         </div>
                     </div>
                     <div class="stat-card">
-                        <div class="stat-icon-wrapper frequency" style="background: rgba(220, 53, 69, 0.2); color: #dc3545; border: 1px solid rgba(220, 53, 69, 0.3);">
+                        <div class="extracted-style-1 stat-icon-wrapper frequency" >
                             <i class="fa-solid fa-fire"></i>
                         </div>
                         <div class="stat-info">
@@ -149,7 +147,7 @@
                             <div class="empty-state">
                                 <i class="fa-solid fa-link-slash"></i>
                                 <p>No channels linked yet. Link accounts in Settings to import your clips!</p>
-                                <button class="btn btn-secondary btn-sm" onclick="document.querySelector('[data-tab=settings]').click()">Link Accounts</button>
+                                <button id="btn-link-accounts-empty" class="btn btn-secondary btn-sm" >Link Accounts</button>
                             </div>
                         </div>
                     </div>
@@ -185,7 +183,7 @@
                         <div class="glass-panel reminders-widget-panel">
                             <div class="panel-header">
                                 <h2><i class="fa-solid fa-clock"></i> Next Scheduled Reminders</h2>
-                                <button class="btn btn-link btn-sm" onclick="document.querySelector('[data-tab=scheduler]').click()">Go to Scheduler</button>
+                                <button id="btn-goto-scheduler-empty" class="btn btn-link btn-sm" >Go to Scheduler</button>
                             </div>
                             <div class="reminder-mini-list" id="dashboard-reminders-list">
                                 <div class="empty-state-mini">
@@ -201,7 +199,7 @@
             <!-- Tab: Platform Stats -->
             <section id="tab-platforms" class="tab-pane">
                 <!-- Premium Segmented Control for Filters -->
-                <div class="segmented-control-wrapper" style="margin-bottom: 24px; overflow-x: auto; padding-bottom: 4px;">
+                <div class="extracted-style-2 segmented-control-wrapper" >
                     <div class="platform-selection-bar segmented-control" id="platform-filter-bar">
                         <!-- Dynamically populated in app.js -->
                     </div>
@@ -209,34 +207,34 @@
 
                 <!-- KPI Cards Row -->
                 <div class="kpi-grid">
-                    <div class="kpi-card glass-panel" style="padding: 20px; border-radius: 16px; position: relative; overflow: hidden;">
-                        <div class="kpi-icon" style="position: absolute; right: -10px; bottom: -15px; font-size: 80px; opacity: 0.05; color: var(--color-primary);"><i class="fa-solid fa-eye"></i></div>
-                        <p class="text-muted" style="font-size: 13px; font-weight: 600; margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.5px;">Total Views</p>
-                        <h2 id="kpi-total-views" style="font-size: 32px; font-weight: 700; margin: 0; color: #fff;">0</h2>
+                    <div class="extracted-style-3 kpi-card glass-panel" >
+                        <div class="extracted-style-4 kpi-icon" ><i class="fa-solid fa-eye"></i></div>
+                        <p class="extracted-style-5 text-muted" >Total Views</p>
+                        <h2 id="kpi-total-views"  class="extracted-style-6">0</h2>
                     </div>
-                    <div class="kpi-card glass-panel" style="padding: 20px; border-radius: 16px; position: relative; overflow: hidden;">
-                        <div class="kpi-icon" style="position: absolute; right: -10px; bottom: -15px; font-size: 80px; opacity: 0.05; color: #f09433;"><i class="fa-solid fa-film"></i></div>
-                        <p class="text-muted" style="font-size: 13px; font-weight: 600; margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.5px;">Total Clips</p>
-                        <h2 id="kpi-total-clips" style="font-size: 32px; font-weight: 700; margin: 0; color: #fff;">0</h2>
+                    <div class="extracted-style-7 kpi-card glass-panel" >
+                        <div class="extracted-style-8 kpi-icon" ><i class="fa-solid fa-film"></i></div>
+                        <p class="extracted-style-9 text-muted" >Total Clips</p>
+                        <h2 id="kpi-total-clips"  class="extracted-style-10">0</h2>
                     </div>
-                    <div class="kpi-card glass-panel" style="padding: 20px; border-radius: 16px; position: relative; overflow: hidden;">
-                        <div class="kpi-icon" style="position: absolute; right: -10px; bottom: -15px; font-size: 80px; opacity: 0.05; color: #00f2fe;"><i class="fa-solid fa-chart-line"></i></div>
-                        <p class="text-muted" style="font-size: 13px; font-weight: 600; margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.5px;">Avg Views / Clip</p>
-                        <h2 id="kpi-avg-views" style="font-size: 32px; font-weight: 700; margin: 0; color: #fff;">0</h2>
+                    <div class="extracted-style-11 kpi-card glass-panel" >
+                        <div class="extracted-style-12 kpi-icon" ><i class="fa-solid fa-chart-line"></i></div>
+                        <p class="extracted-style-13 text-muted" >Avg Views / Clip</p>
+                        <h2 id="kpi-avg-views"  class="extracted-style-14">0</h2>
                     </div>
-                    <div class="kpi-card glass-panel" style="padding: 20px; border-radius: 16px; position: relative; overflow: hidden;">
-                        <div class="kpi-icon" style="position: absolute; right: -10px; bottom: -15px; font-size: 80px; opacity: 0.05; color: #e1306c;"><i class="fa-solid fa-trophy"></i></div>
-                        <p class="text-muted" style="font-size: 13px; font-weight: 600; margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.5px;">Top Platform</p>
-                        <h2 id="kpi-top-platform" style="font-size: 20px; font-weight: 700; margin: 0; color: #fff; margin-top: 10px; text-overflow: ellipsis; white-space: nowrap; overflow: hidden;">N/A</h2>
+                    <div class="extracted-style-15 kpi-card glass-panel" >
+                        <div class="extracted-style-16 kpi-icon" ><i class="fa-solid fa-trophy"></i></div>
+                        <p class="extracted-style-17 text-muted" >Top Platform</p>
+                        <h2 id="kpi-top-platform"  class="extracted-style-18">N/A</h2>
                     </div>
                 </div>
 
                 <!-- Full Width Line Chart -->
-                <div class="glass-panel chart-panel" style="margin-bottom: 24px; padding: 24px;">
-                    <div class="panel-header" style="border-bottom: none; padding-bottom: 0;">
-                        <h2 style="font-size: 16px; font-weight: 600;"><i class="fa-solid fa-chart-area" style="color: var(--color-primary); margin-right: 8px;"></i> View Performance Over Time</h2>
+                <div class="extracted-style-19 glass-panel chart-panel" >
+                    <div class="extracted-style-20 panel-header" >
+                        <h2  class="extracted-style-21"><i class="extracted-style-22 fa-solid fa-chart-area" ></i> View Performance Over Time</h2>
                     </div>
-                    <div class="chart-wrapper" style="height: 300px; width: 100%; position: relative;">
+                    <div class="extracted-style-23 chart-wrapper" >
                         <canvas id="viewPerformanceChart"></canvas>
                     </div>
                 </div>
@@ -244,21 +242,21 @@
                 <!-- 2-Column Grid for Recent Clips (Bar) & Share of Views (Pie) -->
                 <div class="charts-row">
                     <!-- Recent Videos Performance -->
-                    <div class="glass-panel chart-panel" style="padding: 24px;">
-                        <div class="panel-header" style="border-bottom: none; padding-bottom: 0;">
-                            <h2 style="font-size: 16px; font-weight: 600;"><i class="fa-solid fa-chart-column" style="color: var(--color-yt); margin-right: 8px;"></i> Recent Clips Performance (Last 10)</h2>
+                    <div class="extracted-style-24 glass-panel chart-panel" >
+                        <div class="extracted-style-25 panel-header" >
+                            <h2  class="extracted-style-26"><i class="extracted-style-27 fa-solid fa-chart-column" ></i> Recent Clips Performance (Last 10)</h2>
                         </div>
-                        <div class="chart-wrapper" style="height: 300px; width: 100%; position: relative;">
+                        <div class="extracted-style-28 chart-wrapper" >
                             <canvas id="recentPerformanceChart"></canvas>
                         </div>
                     </div>
 
                     <!-- Platform Comparison stats -->
-                    <div class="glass-panel summary-pie-panel" style="padding: 24px; display: flex; flex-direction: column;">
-                        <div class="panel-header" style="border-bottom: none; padding-bottom: 0;">
-                            <h2 style="font-size: 16px; font-weight: 600;"><i class="fa-solid fa-chart-pie" style="color: var(--color-ig); margin-right: 8px;"></i> Share of Views</h2>
+                    <div class="extracted-style-29 glass-panel summary-pie-panel" >
+                        <div class="extracted-style-30 panel-header" >
+                            <h2  class="extracted-style-31"><i class="extracted-style-32 fa-solid fa-chart-pie" ></i> Share of Views</h2>
                         </div>
-                        <div class="chart-wrapper" style="flex-grow: 1; display: flex; align-items: center; justify-content: center; position: relative;">
+                        <div class="extracted-style-33 chart-wrapper" >
                             <canvas id="viewsShareChart"></canvas>
                         </div>
                     </div>
@@ -308,26 +306,26 @@
                         <div class="panel-header">
                             <h2><i class="fa-solid fa-calendar-plus"></i> Schedule New Post</h2>
                         </div>
-                        <form id="scheduler-form" style="display: flex; flex-direction: column; gap: 20px; padding-top: 10px;">
+                        <form id="scheduler-form"  class="extracted-style-34">
                             
                             <!-- Account Selection (Avatar Chips) -->
-                            <div class="form-group" style="margin-bottom: 0;">
-                                <label style="font-size: 13px; font-weight: 600; color: #fff;">1. Target Accounts</label>
-                                <p style="font-size: 11px; color: var(--text-muted); margin-bottom: 8px;">Tap to select platforms</p>
-                                <div id="schedule-accounts-wrapper" style="display: flex; gap: 24px; flex-wrap: wrap;">
-                                    <div class="empty-state" style="padding: 10px; font-size: 12px; width: 100%;">No accounts linked.</div>
+                            <div class="extracted-style-35 form-group" >
+                                <label  class="extracted-style-36">1. Target Accounts</label>
+                                <p  class="extracted-style-37">Tap to select platforms</p>
+                                <div id="schedule-accounts-wrapper"  class="extracted-style-38">
+                                    <div class="extracted-style-39 empty-state" >No accounts linked.</div>
                                 </div>
                             </div>
                             
                             <!-- Title / Topic -->
-                            <div class="form-group" style="margin-bottom: 0;">
-                                <label for="schedule-title" style="font-size: 13px; font-weight: 600; color: #fff;">2. Clip Title / Topic</label>
+                            <div class="extracted-style-40 form-group" >
+                                <label for="schedule-title"  class="extracted-style-41">2. Clip Title / Topic</label>
                                 <input type="text" id="schedule-title" class="form-control" placeholder="e.g., Podcast Episode 12 Highlight">
                             </div>
 
                             <!-- Frequency (Pill Toggles) -->
-                            <div class="form-group" style="margin-bottom: 0;">
-                                <label style="font-size: 13px; font-weight: 600; color: #fff;">3. Frequency</label>
+                            <div class="extracted-style-42 form-group" >
+                                <label  class="extracted-style-43">3. Frequency</label>
                                 <div class="pill-toggle-group" id="schedule-freq-toggles">
                                     <div class="pill-toggle active" data-val="one-time">One-Time</div>
                                     <div class="pill-toggle" data-val="daily">Daily</div>
@@ -338,20 +336,20 @@
                             </div>
 
                             <!-- Dynamic Schedule Options -->
-                            <div id="schedule-dynamic-options" style="background: rgba(255,255,255,0.015); border: 1px solid var(--border-glass); border-radius: 12px; padding: 16px;">
+                            <div id="schedule-dynamic-options"  class="extracted-style-44">
                                 <div class="form-row" id="schedule-datetime-row">
-                                    <div class="form-group col-6" id="schedule-date-group" style="margin-bottom: 0;">
-                                        <label id="schedule-date-label" for="schedule-date" style="font-size: 11px;">Post Date</label>
+                                    <div class="extracted-style-45 form-group col-6" id="schedule-date-group" >
+                                        <label id="schedule-date-label" for="schedule-date"  class="extracted-style-46">Post Date</label>
                                         <input type="date" id="schedule-date" class="form-control" required>
                                     </div>
-                                    <div class="form-group col-6" id="schedule-time-group" style="margin-bottom: 0;">
-                                        <label for="schedule-time" style="font-size: 11px;">Post Time</label>
+                                    <div class="extracted-style-47 form-group col-6" id="schedule-time-group" >
+                                        <label for="schedule-time"  class="extracted-style-48">Post Time</label>
                                         <input type="hidden" id="schedule-time" value="12:00">
-                                        <div id="custom-time-picker" style="display: flex; gap: 6px; align-items: center;">
-                                            <select id="time-hr" class="form-control" style="padding: 10px 8px;"></select>
-                                            <span style="font-weight: 800; color: rgba(255,255,255,0.3);">:</span>
-                                            <select id="time-min" class="form-control" style="padding: 10px 8px;"></select>
-                                            <select id="time-ampm" class="form-control" style="padding: 10px 8px; margin-left: 4px;">
+                                        <div id="custom-time-picker"  class="extracted-style-49">
+                                            <select id="time-hr" class="extracted-style-50 form-control" ></select>
+                                            <span  class="extracted-style-51">:</span>
+                                            <select id="time-min" class="extracted-style-52 form-control" ></select>
+                                            <select id="time-ampm" class="extracted-style-53 form-control" >
                                                 <option value="AM">AM</option>
                                                 <option value="PM">PM</option>
                                             </select>
@@ -359,48 +357,48 @@
                                     </div>
                                 </div>
 
-                                <div class="form-group" id="schedule-interval-group" style="display:none; margin-top: 16px; margin-bottom: 0;">
-                                    <label for="schedule-interval" style="font-size: 11px;">Post Every</label>
-                                    <div style="display: flex; align-items: center; gap: 8px;">
-                                        <input type="number" id="schedule-interval" class="form-control" min="2" max="30" value="3" style="width: 80px;">
-                                        <span style="font-size: 13px; color: var(--text-muted);">Days</span>
+                                <div class="extracted-style-54 form-group" id="schedule-interval-group" >
+                                    <label for="schedule-interval"  class="extracted-style-55">Post Every</label>
+                                    <div  class="extracted-style-56">
+                                        <input type="number" id="schedule-interval" class="extracted-style-57 form-control" min="2" max="30" value="3" >
+                                        <span  class="extracted-style-58">Days</span>
                                     </div>
                                 </div>
 
-                                <div class="form-group" id="schedule-custom-days-group" style="display:none; margin-top: 16px; margin-bottom: 0;">
-                                    <label style="font-size: 11px;">Select Days of Week</label>
-                                    <div class="checkbox-group" style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px;">
-                                        <label class="checkbox-container"><input type="checkbox" class="custom-day-cb" value="0"><span class="checkbox-custom" style="padding: 6px 0; font-size: 11px;">Sun</span></label>
-                                        <label class="checkbox-container"><input type="checkbox" class="custom-day-cb" value="1"><span class="checkbox-custom" style="padding: 6px 0; font-size: 11px;">Mon</span></label>
-                                        <label class="checkbox-container"><input type="checkbox" class="custom-day-cb" value="2"><span class="checkbox-custom" style="padding: 6px 0; font-size: 11px;">Tue</span></label>
-                                        <label class="checkbox-container"><input type="checkbox" class="custom-day-cb" value="3"><span class="checkbox-custom" style="padding: 6px 0; font-size: 11px;">Wed</span></label>
-                                        <label class="checkbox-container"><input type="checkbox" class="custom-day-cb" value="4"><span class="checkbox-custom" style="padding: 6px 0; font-size: 11px;">Thu</span></label>
-                                        <label class="checkbox-container"><input type="checkbox" class="custom-day-cb" value="5"><span class="checkbox-custom" style="padding: 6px 0; font-size: 11px;">Fri</span></label>
-                                        <label class="checkbox-container"><input type="checkbox" class="custom-day-cb" value="6"><span class="checkbox-custom" style="padding: 6px 0; font-size: 11px;">Sat</span></label>
+                                <div class="extracted-style-59 form-group" id="schedule-custom-days-group" >
+                                    <label  class="extracted-style-60">Select Days of Week</label>
+                                    <div class="extracted-style-61 checkbox-group" >
+                                        <label class="checkbox-container"><input type="checkbox" class="custom-day-cb" value="0"><span class="extracted-style-62 checkbox-custom" >Sun</span></label>
+                                        <label class="checkbox-container"><input type="checkbox" class="custom-day-cb" value="1"><span class="extracted-style-63 checkbox-custom" >Mon</span></label>
+                                        <label class="checkbox-container"><input type="checkbox" class="custom-day-cb" value="2"><span class="extracted-style-64 checkbox-custom" >Tue</span></label>
+                                        <label class="checkbox-container"><input type="checkbox" class="custom-day-cb" value="3"><span class="extracted-style-65 checkbox-custom" >Wed</span></label>
+                                        <label class="checkbox-container"><input type="checkbox" class="custom-day-cb" value="4"><span class="extracted-style-66 checkbox-custom" >Thu</span></label>
+                                        <label class="checkbox-container"><input type="checkbox" class="custom-day-cb" value="5"><span class="extracted-style-67 checkbox-custom" >Fri</span></label>
+                                        <label class="checkbox-container"><input type="checkbox" class="custom-day-cb" value="6"><span class="extracted-style-68 checkbox-custom" >Sat</span></label>
                                     </div>
                                 </div>
                             </div>
                             
-                            <div class="form-group" style="margin-bottom: 0;">
-                                <label for="schedule-notes" style="font-size: 13px; font-weight: 600; color: #fff;">4. Notes / Tags (Optional)</label>
+                            <div class="extracted-style-69 form-group" >
+                                <label for="schedule-notes"  class="extracted-style-70">4. Notes / Tags (Optional)</label>
                                 <textarea id="schedule-notes" class="form-control" rows="2" placeholder="Hashtags, draft notes..."></textarea>
                             </div>
 
-                            <button type="submit" class="btn btn-primary btn-block" style="margin-top: 10px; font-size: 15px; padding: 14px;"><i class="fa-solid fa-paper-plane"></i> Schedule Post</button>
+                            <button type="submit" class="extracted-style-71 btn btn-primary btn-block" ><i class="fa-solid fa-paper-plane"></i> Schedule Post</button>
                         </form>
                     </div>
 
                     <!-- Right: Timeline View -->
-                    <div class="glass-panel scheduler-timeline-panel" style="display: flex; flex-direction: column;">
-                        <div class="panel-header flex-header" style="border-bottom: none; padding-bottom: 0;">
+                    <div class="extracted-style-72 glass-panel scheduler-timeline-panel" >
+                        <div class="extracted-style-73 panel-header flex-header" >
                             <h2><i class="fa-solid fa-timeline"></i> Posting Timeline</h2>
                             <div class="pill-toggle-group">
-                                <div class="pill-toggle active" id="filter-upcoming" style="padding: 6px 14px;">Upcoming</div>
-                                <div class="pill-toggle" id="filter-completed" style="padding: 6px 14px;">Completed</div>
+                                <div class="extracted-style-74 pill-toggle active" id="filter-upcoming" >Upcoming</div>
+                                <div class="extracted-style-75 pill-toggle" id="filter-completed" >Completed</div>
                             </div>
                         </div>
                         
-                        <div class="timeline-container" id="scheduler-timeline" style="flex-grow: 1; overflow-y: auto; padding: 20px 20px 20px 10px; margin-top: 20px; max-height: 600px;">
+                        <div class="extracted-style-76 timeline-container" id="scheduler-timeline" >
                             <div class="empty-state">
                                 <i class="fa-solid fa-calendar-xmark"></i>
                                 <p>No scheduled tasks on the timeline.</p>
@@ -410,71 +408,71 @@
                 </div>
             </section>
 
-        <!-- Tab: Accounts -->
-        <section id="tab-accounts" class="tab-pane">
+            <!-- Tab: Accounts -->
+            <section id="tab-accounts" class="tab-pane">
             <!-- Accounts List View -->
             <div id="accounts-list-view">
-                <div id="youtube-accounts-section" style="margin-bottom: 40px; display: none;">
-                    <h3 style="font-size: 16px; font-weight: 600; color: #aaa; margin-bottom: 16px; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 8px;"><i class="fa-brands fa-youtube" style="color: #ff0000; margin-right: 8px;"></i> YouTube Accounts</h3>
+                <div id="youtube-accounts-section"  class="extracted-style-77">
+                    <h3  class="extracted-style-78"><i class="extracted-style-79 fa-brands fa-youtube" ></i> YouTube Accounts</h3>
                     <div id="youtube-accounts-grid" class="accounts-grid">
                         <!-- Populated by JS -->
                     </div>
                 </div>
 
-                <div id="instagram-accounts-section" style="margin-bottom: 40px; display: none;">
-                    <h3 style="font-size: 16px; font-weight: 600; color: #aaa; margin-bottom: 16px; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 8px;"><i class="fa-brands fa-instagram" style="color: #e1306c; margin-right: 8px;"></i> Instagram Accounts</h3>
+                <div id="instagram-accounts-section"  class="extracted-style-80">
+                    <h3  class="extracted-style-81"><i class="extracted-style-82 fa-brands fa-instagram" ></i> Instagram Accounts</h3>
                     <div id="instagram-accounts-grid" class="accounts-grid">
                         <!-- Populated by JS -->
                     </div>
                 </div>
 
-                <div id="no-accounts-message" class="empty-state" style="display: none; grid-column: 1/-1;">
-                    <i class="fa-solid fa-users-slash" style="font-size: 24px; color: var(--text-muted); margin-bottom: 8px;"></i>
-                    <p style="font-size: 14px; color: var(--text-muted); margin: 0;">No accounts connected.</p>
+                <div id="no-accounts-message" class="extracted-style-83 empty-state" >
+                    <i class="extracted-style-84 fa-solid fa-users-slash" ></i>
+                    <p  class="extracted-style-85">No accounts connected.</p>
                 </div>
             </div>
 
             <!-- Account Details View -->
-            <div id="account-detail-view" style="display: none;">
-                <div style="margin-bottom: 20px;">
-                    <button class="btn-back" id="btn-back-accounts" style="margin-bottom: 15px;">
+            <div id="account-detail-view"  class="extracted-style-86">
+                <div  class="extracted-style-87">
+                    <button class="extracted-style-88 btn-back" id="btn-back-accounts" >
                         <i class="fa-solid fa-arrow-left"></i> Back to Accounts
                     </button>
-                    <div id="account-profile-header" style="display: flex; gap: 40px; align-items: center; margin-bottom: 40px; padding: 20px 0;">
+                    <div id="account-profile-header"  class="extracted-style-89">
                         <!-- Avatar -->
-                        <div style="position: relative;">
-                            <img id="account-avatar" src="" style="width: 160px; height: 160px; border-radius: 50%; object-fit: cover; border: 4px solid #121212; outline: 2px solid rgba(255,255,255,0.1); flex-shrink: 0;" onerror="this.src='https://cdn-icons-png.flaticon.com/512/1384/1384060.png'">
+                        <div  class="extracted-style-90">
+                            <img id="account-avatar" src=""  alt="Account Avatar" onerror="this.onerror=null; this.src='https://cdn-icons-png.flaticon.com/512/1384/1384060.png'" class="extracted-style-91">
                         </div>
                         
                         <!-- Details & Stats -->
-                        <div style="display: flex; flex-direction: column; gap: 24px; flex-grow: 1;">
-                            <div style="display: flex; align-items: center; gap: 20px; flex-wrap: wrap;">
-                                <h2 id="account-detail-title" style="margin: 0; font-size: 36px; font-weight: 800; letter-spacing: -1px; display: flex; align-items: center;">
+                        <div  class="extracted-style-92">
+                            <div  class="extracted-style-93">
+                                <h2 id="account-detail-title"  class="extracted-style-94">
                                     @handle
                                 </h2>
-                                <div id="account-last-upload-bar" style="background: rgba(14, 165, 233, 0.15); border: 1px solid rgba(14, 165, 233, 0.5); padding: 8px 16px; border-radius: 20px; font-size: 13px; font-weight: 600; color: #38bdf8; display: flex; align-items: center; gap: 8px;">
-                                    <i class="fa-solid fa-clock" style="color: #38bdf8;"></i> <span id="account-last-upload-text">Loading...</span>
+                                <div id="account-last-upload-bar"  class="extracted-style-95">
+                                    <i class="extracted-style-96 fa-solid fa-clock" ></i> <span id="account-last-upload-text">Loading...</span>
                                 </div>
-                                <div id="account-schedule-alert" style="display:none; background: rgba(255, 149, 0, 0.15); border: 1px solid rgba(255, 149, 0, 0.5); padding: 8px 16px; border-radius: 20px; font-size: 13px; font-weight: 600; color: #ff9500; align-items: center; gap: 8px;"></div>
+                                <div id="account-schedule-alert"  class="extracted-style-97"></div>
                             </div>
                             
                             <!-- Stats Boxes (Red Boxes Request) -->
-                            <div id="account-stats-boxes" style="display: flex; gap: 20px; flex-wrap: wrap;">
+                            <div id="account-stats-boxes"  class="extracted-style-98">
                                 <!-- Dynamically generated by JS -->
                             </div>
 
                             <!-- Notes Section -->
-                            <div id="account-notes-section" style="margin-top: 10px; margin-bottom: 20px;">
-                                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
-                                    <h3 style="font-size: 14px; font-weight: 600; color: #aaa; text-transform: uppercase; letter-spacing: 1px; margin: 0;">Channel Notes</h3>
-                                    <button id="btn-edit-note" style="background: none; border: none; color: var(--color-primary); cursor: pointer; font-size: 12px; font-weight: 600; display: none;"><i class="fa-solid fa-pen"></i> Edit</button>
+                            <div id="account-notes-section"  class="extracted-style-99">
+                                <div  class="extracted-style-100">
+                                    <h3  class="extracted-style-101">Channel Notes</h3>
+                                    <button id="btn-edit-note"  class="extracted-style-102"><i class="fa-solid fa-pen"></i> Edit</button>
                                 </div>
-                                <div id="account-notes-display" style="width: 100%; min-height: 40px; background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.05); border-radius: 8px; padding: 12px; color: #ccc; font-size: 14px; white-space: pre-wrap; line-height: 1.5; margin-bottom: 12px; display: none;"></div>
+                                <div id="account-notes-display"  class="extracted-style-103"></div>
                                 <div id="account-notes-editor">
-                                    <textarea id="account-notes-input" placeholder="Jot down strategies, observations, or ideas for this channel..." style="width: 100%; height: 100px; background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.1); border-radius: 8px; padding: 12px; color: #fff; font-family: inherit; font-size: 14px; resize: vertical; margin-bottom: 12px; outline: none; transition: border-color 0.2s;" onfocus="this.style.borderColor='rgba(0, 242, 254, 0.5)'" onblur="this.style.borderColor='rgba(255,255,255,0.1)'"></textarea>
+                                    <textarea id="account-notes-input" placeholder="Jot down strategies, observations, or ideas for this channel..."   class="extracted-style-104"></textarea>
                                     <div>
-                                        <button id="btn-save-note" style="background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.15); color: #fff; padding: 8px 16px; border-radius: 6px; font-size: 13px; font-weight: 600; cursor: pointer; transition: all 0.2s;" onmouseover="this.style.background='rgba(255,255,255,0.15)'" onmouseout="this.style.background='rgba(255,255,255,0.1)'">Save Note</button>
-                                        <button id="btn-cancel-note" style="background: transparent; border: none; color: #888; padding: 8px 16px; border-radius: 6px; font-size: 13px; font-weight: 600; cursor: pointer; transition: color 0.2s; display: none;" onmouseover="this.style.color='#fff'" onmouseout="this.style.color='#888'">Cancel</button>
+                                        <button id="btn-save-note"   class="extracted-style-105">Save Note</button>
+                                        <button id="btn-cancel-note"   class="extracted-style-106">Cancel</button>
                                     </div>
                                 </div>
                             </div>
@@ -487,17 +485,17 @@
             </div>
         </section>
 
-        <!-- Tab: Settings -->
-        <section id="tab-settings" class="tab-pane">
+            <!-- Tab: Settings -->
+            <section id="tab-settings" class="tab-pane">
                 <div class="settings-grid">
                     <!-- Left Column: Channels & Linking -->
-                    <div style="display:flex; flex-direction:column; gap:24px;">
+                    <div  class="extracted-style-107">
                         <!-- Linked Channels List -->
                         <div class="glass-panel settings-panel">
                             <div class="panel-header">
                                 <h2><i class="fa-solid fa-circle-nodes"></i> Connected Accounts</h2>
                             </div>
-                            <div class="settings-body" id="connected-accounts-list" style="gap: 10px;">
+                            <div class="extracted-style-108 settings-body" id="connected-accounts-list" >
                                 <!-- Dynamic list of linked profiles -->
                             </div>
                         </div>
@@ -507,13 +505,13 @@
                             <div class="panel-header">
                                 <h2><i class="fa-solid fa-circle-plus"></i> Connect New Profile</h2>
                             </div>
-                            <div class="settings-body" style="gap:12px;">
-                                <div class="platform-segmented-control" style="display: flex; background: rgba(255,255,255,0.03); padding: 4px; border-radius: 8px; border: 1px solid var(--border-glass); margin-bottom: 6px;">
-                                    <button class="btn btn-tab-sm active" id="segmented-yt-btn" style="flex: 1; border-radius: 6px; font-size:11px; margin:0; padding:6px 12px; pointer-events: none;"><i class="fa-brands fa-youtube" style="color:var(--color-yt);"></i> YouTube Shorts</button>
+                            <div class="extracted-style-109 settings-body" >
+                                <div class="extracted-style-110 platform-segmented-control" >
+                                    <button class="extracted-style-111 btn btn-tab-sm active" id="segmented-yt-btn" ><i class="extracted-style-112 fa-brands fa-youtube" ></i> YouTube Shorts</button>
                                 </div>
                                 
-                                <div class="form-group" style="margin-bottom:8px;">
-                                    <label for="setting-channel-handle" style="font-size: 11px;" class="text-muted">Profile Username / Handle</label>
+                                <div class="extracted-style-113 form-group" >
+                                    <label for="setting-channel-handle"  class="extracted-style-114 text-muted">Profile Username / Handle</label>
                                     <div class="input-group">
                                         <span class="input-addon">@</span>
                                         <input type="text" id="setting-channel-handle" class="form-control" placeholder="Founderbusinesstech" value="">
@@ -526,24 +524,24 @@
                     </div>
 
                     <!-- Right Column: Instructions & System Configuration -->
-                    <div style="display:flex; flex-direction:column; gap:24px;">
+                    <div  class="extracted-style-115">
                         <!-- Buffer API Integration -->
                         <div class="glass-panel settings-panel" id="buffer-auth-box">
                             <div class="panel-header">
                                 <h2><i class="fa-brands fa-buffer icon-ig"></i> Buffer API Connection</h2>
                             </div>
-                            <div class="settings-body" style="gap:12px;">
-                                <div class="form-group" style="margin-bottom:8px;">
+                            <div class="extracted-style-116 settings-body" >
+                                <div class="extracted-style-117 form-group" >
                                     <label for="buffer-token-input">Buffer Personal Access Token</label>
                                     <input type="password" id="buffer-token-input" class="form-control mt-1" placeholder="Enter your Buffer API token">
-                                    <p class="text-xxs text-muted mt-2" style="font-size: 11px; line-height: 1.4;">
-                                        Connecting your Buffer account allows this app to directly fetch accurate view counts, timestamps, and thumbnails for your scheduled posts without relying on brittle browser scraping. Get your token from the <a href="https://buffer.com/developers/api" target="_blank" style="color:var(--color-primary)">Buffer Developer Portal</a>.
+                                    <p class="extracted-style-118 text-xxs text-muted mt-2" >
+                                        Connecting your Buffer account allows this app to directly fetch accurate view counts, timestamps, and thumbnails for your scheduled posts without relying on brittle browser scraping. Get your token from the <a href="https://buffer.com/developers/api" target="_blank"  class="extracted-style-119">Buffer Developer Portal</a>.
                                     </p>
                                 </div>
-                                <button class="btn btn-secondary btn-block" id="buffer-fetch-channels-btn" style="background: rgba(255,255,255,0.05);"><i class="fa-solid fa-cloud-arrow-down"></i> Load Available Channels</button>
+                                <button class="extracted-style-120 btn btn-secondary btn-block" id="buffer-fetch-channels-btn" ><i class="fa-solid fa-cloud-arrow-down"></i> Load Available Channels</button>
                                 
                                 <!-- Container for fetched channels -->
-                                <div id="buffer-channels-list" style="margin-top: 15px; display: none; flex-direction: column; gap: 10px;">
+                                <div id="buffer-channels-list"  class="extracted-style-121">
                                     <!-- Channels will be injected here -->
                                 </div>
                             </div>
@@ -564,7 +562,7 @@
                                 <p class="text-muted text-xs mt-1">If the gap between current time and the most recent upload exceeds this duration, the upload warning system will trigger.</p>
                             </div>
                             <div class="form-group">
-                                <label>Notification Alerts</label>
+                                <div style="font-weight:600; margin-bottom:8px;">Notification Alerts</div>
                                 <div class="toggle-group">
                                     <label class="toggle-container">
                                         <input type="checkbox" id="setting-enable-audio" checked>
@@ -592,6 +590,7 @@
                             </div>
                         </div>
                     </div>
+                    </div>
                 </div>
             </div>
             </section>
@@ -599,51 +598,51 @@
     </div>
 
     <!-- Confirm Completion Modal -->
-    <div id="confirm-completion-modal" style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.85); backdrop-filter: blur(8px); z-index: 10000; align-items: center; justify-content: center;" onclick="if(event.target === this) this.style.display='none'">
-        <div class="glass-panel" style="width: 520px; max-width: 90%; padding: 40px; border-radius: 24px; box-shadow: 0 20px 60px rgba(0,0,0,0.6), 0 0 0 1px rgba(255,255,255,0.1) inset; background: linear-gradient(to bottom, var(--bg-surface-glass), rgba(10,11,16,0.95));">
-            <h3 style="margin-top: 0; color: #fff; display: flex; align-items: center; gap: 12px; font-size: 22px; font-weight: 700;"><i class="fa-solid fa-circle-check" style="color: var(--color-accent); font-size: 24px; filter: drop-shadow(0 0 8px var(--color-accent-glow));"></i> Confirm Upload Details</h3>
-            <p style="font-size: 14px; color: var(--text-secondary); margin-bottom: 28px; line-height: 1.5;">Please verify exactly when this video went live and attach the published link for your records. This helps keep your stats extremely accurate.</p>
+    <div id="confirm-completion-modal"   class="extracted-style-122">
+        <div class="extracted-style-123 glass-panel" >
+            <h3  class="extracted-style-124"><i class="extracted-style-125 fa-solid fa-circle-check" ></i> Confirm Upload Details</h3>
+            <p  class="extracted-style-126">Please verify exactly when this video went live and attach the published link for your records. This helps keep your stats extremely accurate.</p>
             
-            <div class="form-group" style="margin-bottom: 20px;">
-                <label for="completion-actual-time" style="font-size: 14px; font-weight: 600; color: #fff; margin-bottom: 8px; display: block;">Actual Publish Time</label>
-                <input type="datetime-local" id="completion-actual-time" class="form-control" style="font-size: 15px; padding: 14px; border-radius: 12px;" required>
+            <div class="extracted-style-127 form-group" >
+                <label for="completion-actual-time"  class="extracted-style-128">Actual Publish Time</label>
+                <input type="datetime-local" id="completion-actual-time" class="extracted-style-129 form-control"  required>
             </div>
             
-            <div class="form-group" style="margin-bottom: 0;">
-                <label for="completion-link" style="font-size: 14px; font-weight: 600; color: #fff; margin-bottom: 8px; display: block;">Published Video Link <span style="opacity:0.5; font-weight:400;">(Optional)</span></label>
-                <input type="url" id="completion-link" class="form-control" placeholder="https://instagram.com/reel/..." style="font-size: 15px; padding: 14px; border-radius: 12px;">
+            <div class="extracted-style-130 form-group" >
+                <label for="completion-link"  class="extracted-style-131">Published Video Link <span  class="extracted-style-132">(Optional)</span></label>
+                <input type="url" id="completion-link" class="extracted-style-133 form-control" placeholder="https://instagram.com/reel/..." >
             </div>
             
             <input type="hidden" id="completion-task-id">
             
-            <div style="display: flex; gap: 16px; margin-top: 36px;">
-                <button type="button" class="btn btn-secondary" style="flex: 1; padding: 16px; font-size: 16px; font-weight: 600; border-radius: 14px; background: rgba(255,255,255,0.05);" onclick="document.getElementById('confirm-completion-modal').style.display='none'">Cancel</button>
-                <button type="button" class="btn btn-primary" style="flex: 2; background: var(--color-accent); border: none; color: #0a0b10; font-size: 16px; font-weight: 700; padding: 16px; border-radius: 14px; box-shadow: 0 8px 24px var(--color-accent-glow); transition: 0.2s; cursor: pointer;" onclick="confirmTaskCompletion()">Confirm & Complete <i class="fa-solid fa-arrow-right" style="margin-left: 6px;"></i></button>
+            <div  class="extracted-style-134">
+                <button type="button" id="btn-cancel-completion" class="extracted-style-135 btn btn-secondary">Cancel</button>
+                <button type="button" id="btn-confirm-completion" class="extracted-style-136 btn btn-primary">Confirm & Complete <i class="extracted-style-137 fa-solid fa-arrow-right" ></i></button>
             </div>
         </div>
     </div>
 
     <!-- Daily Activity Modal -->
-    <div id="daily-activity-modal" style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.85); backdrop-filter: blur(8px); z-index: 9999; align-items: center; justify-content: center;">
-        <div class="glass-panel" style="width: 600px; max-width: 90%; max-height: 85vh; padding: 40px; border-radius: 24px; box-shadow: 0 20px 60px rgba(0,0,0,0.6), 0 0 0 1px rgba(255,255,255,0.1) inset; background: linear-gradient(to bottom, var(--bg-surface-glass), rgba(10,11,16,0.95)); display: flex; flex-direction: column;">
+    <div id="daily-activity-modal"  class="extracted-style-138">
+        <div class="extracted-style-139 glass-panel" >
             
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px;">
-                <h3 style="margin: 0; color: #fff; display: flex; align-items: center; gap: 12px; font-size: 22px; font-weight: 700;">
-                    <i class="fa-solid fa-calendar-day" style="color: var(--color-accent); font-size: 24px; filter: drop-shadow(0 0 8px var(--color-accent-glow));"></i> 
+            <div  class="extracted-style-140">
+                <h3  class="extracted-style-141">
+                    <i class="extracted-style-142 fa-solid fa-calendar-day" ></i> 
                     <span id="daily-activity-date-title">Date</span>
                 </h3>
-                <button type="button" style="background: none; border: none; color: var(--text-muted); cursor: pointer; font-size: 20px; transition: 0.2s;" onmouseover="this.style.color='#fff'" onmouseout="this.style.color='var(--text-muted)'" onclick="document.getElementById('daily-activity-modal').style.display='none'"><i class="fa-solid fa-xmark"></i></button>
+                <button type="button" id="btn-close-daily-modal" class="extracted-style-143 hover-text-white"><i class="fa-solid fa-xmark"></i></button>
             </div>
             
-            <div style="overflow-y: auto; flex: 1; padding-right: 8px; margin-right: -8px;">
+            <div  class="extracted-style-144">
                 
-                <h4 style="color: var(--text-primary); font-size: 14px; text-transform: uppercase; letter-spacing: 1px; margin: 0 0 16px 0; padding-bottom: 8px; border-bottom: 1px solid var(--border-glass);">Published / Logged Videos</h4>
-                <div id="daily-activity-published-list" style="display: flex; flex-direction: column; gap: 12px; margin-bottom: 32px;">
+                <h4  class="extracted-style-145">Published / Logged Videos</h4>
+                <div id="daily-activity-published-list"  class="extracted-style-146">
                     <!-- Populated by JS -->
                 </div>
                 
-                <h4 style="color: var(--text-primary); font-size: 14px; text-transform: uppercase; letter-spacing: 1px; margin: 0 0 16px 0; padding-bottom: 8px; border-bottom: 1px solid var(--border-glass);">Scheduled Future Posts</h4>
-                <div id="daily-activity-scheduled-list" style="display: flex; flex-direction: column; gap: 12px;">
+                <h4  class="extracted-style-147">Scheduled Future Posts</h4>
+                <div id="daily-activity-scheduled-list"  class="extracted-style-148">
                     <!-- Populated by JS -->
                 </div>
                 
@@ -652,7 +651,7 @@
     </div>
 
     <!-- Floating Toast Container -->
-    <div id="toast-container" style="position: fixed; bottom: 20px; right: 20px; z-index: 10000; display: flex; flex-direction: column; gap: 12px;"></div>
+    <div id="toast-container"  class="extracted-style-149"></div>
 
     <!-- ESC Key Modal Close -->
     <script>
@@ -667,11 +666,13 @@
     </script>
 
     <!-- Hidden audio element for chime -->
-    <audio id="alert-chime" preload="auto">
+    <audio id="alert-chime" preload="none">
         <!-- Using a public static royalty free short bell chime sound -->
         <source src="https://assets.mixkit.co/active_storage/sfx/2869/2869-200.wav" type="audio/wav">
     </audio>
     
+    <script src="https://cdn.jsdelivr.net/npm/chart.js" integrity="sha384-jb8JQMbMoBUzgWatfe6COACi2ljcDdZQ2OxczGA3bGNeWe+6DChMTBJemed7ZnvJ" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr" integrity="sha384-5JqMv4L/Xa0hfvtF06qboNdhvuYXUku9ZrhZh3bSk8VXF0A/RuSLHpLsSV9Zqhl6" crossorigin="anonymous"></script>
     <!-- Core Application Logic -->
     <script src="app.js"></script>
 </body>
